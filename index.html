@@ -1,0 +1,763 @@
+<title>Star Warts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Chakra+Petch:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>
+/* Layout: one-screen arcade app — header bar with credz + nav, tabbed panels; battle view stacks opponent above you. Deliberate single dark "B-movie space" look. */
+:root{
+  --void:#0a0c16; --panel:#141a2d; --panel2:#1b2340; --line:#2b3456;
+  --text:#ece6d2; --dim:#8f96b3; --gold:#ffd23f; --gold-ink:#1b1400;
+  --rebel:#ff6f3c; --umpire:#5fbcff; --good:#55e08f; --bad:#ff5468;
+  --r-common:#a2abc0; --r-rare:#4ea6ff; --r-epic:#c07bff; --r-legendary:#ffb12e;
+  --f-display:"Bungee","Impact","Arial Black",sans-serif;
+  --f-body:"Chakra Petch","Segoe UI",system-ui,sans-serif;
+  --f-mono:"Space Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--void);color:var(--text);font-family:var(--f-body);font-size:15px;line-height:1.45;
+  background-image:radial-gradient(1px 1px at 12% 18%,#fff8 50%,transparent 51%),radial-gradient(1px 1px at 72% 8%,#fff6 50%,transparent 51%),radial-gradient(1.5px 1.5px at 40% 62%,#fff5 50%,transparent 51%),radial-gradient(1px 1px at 88% 44%,#fff7 50%,transparent 51%),radial-gradient(1px 1px at 22% 84%,#fff5 50%,transparent 51%),radial-gradient(1px 1px at 58% 92%,#fff6 50%,transparent 51%);
+  background-size:420px 420px;background-attachment:fixed}
+button{font-family:inherit;font-size:inherit;color:inherit;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* header */
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--void) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-block:10px}
+.logo{font-family:var(--f-display);color:var(--gold);font-size:22px;letter-spacing:.02em;line-height:1;white-space:nowrap}
+.logo small{display:block;font-family:var(--f-mono);font-size:10px;color:var(--dim);letter-spacing:.12em;margin-top:3px}
+nav{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+nav button{background:none;border:1px solid transparent;border-radius:6px;padding:6px 10px;font-weight:600;color:var(--dim);text-transform:uppercase;font-size:12px;letter-spacing:.08em}
+nav button[aria-selected="true"]{color:var(--text);border-color:var(--line);background:var(--panel)}
+.credz{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-weight:700}
+.coin{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--gold-ink);font-family:var(--f-display);font-size:11px}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-weight:600}
+.btn:hover:not(:disabled){border-color:var(--dim)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.gold{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}
+.btn.small{padding:4px 10px;font-size:13px}
+.btn.danger{border-color:var(--bad);color:var(--bad);background:transparent}
+
+main{padding-block:20px 60px}
+h2{font-family:var(--f-display);font-weight:400;font-size:20px;margin:0 0 4px;text-wrap:balance}
+h3{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--dim);margin:0 0 10px;font-weight:700}
+.muted{color:var(--dim)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px}
+@media (max-width:820px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* crawl */
+.crawl{perspective:320px;height:150px;overflow:hidden;position:relative;margin-bottom:18px;mask-image:linear-gradient(to top,#000 55%,transparent)}
+.crawl-inner{transform:rotateX(28deg);transform-origin:50% 100%;position:absolute;inset:auto 0 0 0;text-align:center;color:var(--gold);font-weight:700}
+.crawl-inner .ep{font-family:var(--f-mono);font-size:12px;letter-spacing:.2em}
+.crawl-inner .t{font-family:var(--f-display);font-size:28px;line-height:1.1}
+.crawl-inner p{max-width:520px;margin:6px auto 0;font-size:14px;text-align:justify}
+
+/* lists */
+.list{display:flex;flex-direction:column;gap:6px}
+.li{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:8px}
+.li .grow{flex:1;min-width:0}
+.avatar{width:26px;height:26px;border-radius:50%;flex:none;background:var(--line)}
+.pill{font-family:var(--f-mono);font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+.pill.live{color:var(--good);border-color:var(--good)}
+.pill.turn{color:var(--gold);border-color:var(--gold)}
+.empty{padding:18px;text-align:center;color:var(--dim);border:1px dashed var(--line);border-radius:8px}
+
+/* cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+.card{--rc:var(--r-common);position:relative;border-radius:12px;padding:6px;background:linear-gradient(160deg,color-mix(in srgb,var(--rc) 55%,#000),#0c0f1d 70%);border:2px solid var(--rc);aspect-ratio:5/7;display:flex;flex-direction:column;min-width:0;max-width:100%;user-select:none}
+.card.rare{--rc:var(--r-rare)}.card.epic{--rc:var(--r-epic)}.card.legendary{--rc:var(--r-legendary);box-shadow:0 0 18px color-mix(in srgb,var(--r-legendary) 40%,transparent)}
+.card .art{flex:1;border-radius:7px;display:grid;place-items:center;font-size:44px;position:relative;overflow:hidden;min-height:0}
+.card.rebel .art{background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--rebel) 45%,transparent),#140c0a 75%)}
+.card.umpire .art{background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--umpire) 40%,transparent),#08111b 75%)}
+.card.neutral .art{background:radial-gradient(circle at 50% 40%,#5a5f78,#0f111a 75%)}
+.card .cost{position:absolute;top:-6px;left:-6px;width:28px;height:28px;border-radius:50%;background:var(--umpire);color:#04121f;font-family:var(--f-display);display:grid;place-items:center;font-size:14px;border:2px solid #0a0c16;z-index:2}
+.card .name{font-weight:700;font-size:12.5px;line-height:1.15;margin:5px 2px 2px;min-height:2.3em}
+.card .txt{font-size:10.5px;line-height:1.25;color:#cfd3e6;min-height:2.6em;margin:0 2px}
+.card .stats{display:flex;justify-content:space-between;margin-top:4px;font-family:var(--f-display);font-size:14px}
+.card .atk{color:var(--gold)}.card .hp{color:var(--bad)}
+.card .tag{position:absolute;top:6px;right:6px;font-family:var(--f-mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;background:#000a;padding:1px 5px;border-radius:4px;color:var(--rc)}
+.card .owned{position:absolute;bottom:-8px;right:-6px;font-family:var(--f-mono);font-size:11px;background:var(--void);border:1px solid var(--line);border-radius:99px;padding:1px 7px}
+.card.locked{filter:grayscale(1) brightness(.45)}
+.cardbox{display:flex;flex-direction:column;gap:6px;min-width:0}
+.cardbox .row{justify-content:space-between}
+
+/* shop packs */
+.packs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:22px}
+.pack{display:flex;gap:14px;align-items:center;padding:14px;border-radius:12px;border:1px solid var(--line);background:linear-gradient(120deg,var(--panel2),var(--panel))}
+.pack .box{width:58px;height:78px;border-radius:8px;flex:none;display:grid;place-items:center;font-family:var(--f-display);font-size:11px;text-align:center;line-height:1.05;color:var(--gold-ink);background:repeating-linear-gradient(45deg,var(--gold),var(--gold) 6px,#ffe48a 6px,#ffe48a 12px)}
+.pack.premium .box{background:repeating-linear-gradient(45deg,var(--r-epic),var(--r-epic) 6px,#d9b2ff 6px,#d9b2ff 12px);color:#1a0730}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.chip{background:none;border:1px solid var(--line);border-radius:99px;padding:4px 12px;font-size:12px;color:var(--dim)}
+.chip[aria-pressed="true"]{color:var(--text);border-color:var(--gold)}
+
+/* deck */
+.deckbar{position:sticky;top:calc(env(safe-area-inset-top,0px) + 64px);z-index:5}
+.decklist{display:flex;flex-direction:column;gap:3px;max-height:56vh;overflow:auto}
+.dl{display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:6px;background:var(--panel2);font-size:13px}
+.dl .c{font-family:var(--f-display);color:var(--umpire);width:18px}
+.dl .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meter{height:6px;background:var(--line);border-radius:99px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--gold)}
+.qty{display:flex;align-items:center;gap:6px}
+.qty button{width:28px;height:28px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);font-weight:700}
+.qty button:disabled{opacity:.3}
+
+/* achievements */
+.achs{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.ach{display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--panel)}
+.ach .medal{width:38px;height:38px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:18px;background:var(--panel2);border:2px solid var(--line);filter:grayscale(1);opacity:.5}
+.ach.done .medal{filter:none;opacity:1;border-color:var(--gold);background:color-mix(in srgb,var(--gold) 18%,var(--panel2))}
+.ach .rw{font-family:var(--f-mono);font-size:12px;color:var(--gold)}
+.ach .prog{font-family:var(--f-mono);font-size:11px;color:var(--dim)}
+
+/* game */
+.game{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:16px}
+@media (max-width:900px){.game{grid-template-columns:minmax(0,1fr)}}
+.table{display:flex;flex-direction:column;gap:10px;background:radial-gradient(ellipse at 50% 50%,#1a2242,#0d1121 70%);border:1px solid var(--line);border-radius:14px;padding:12px}
+.hero{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:10px;border:2px solid transparent;flex-wrap:wrap}
+.hero.target{border-color:var(--bad);cursor:crosshair;background:color-mix(in srgb,var(--bad) 12%,transparent)}
+.hero .hp{font-family:var(--f-display);font-size:26px;color:var(--bad);min-width:52px}
+.hero .who{flex:1;min-width:120px;font-weight:700}
+.hero .who small{display:block;font-weight:400;color:var(--dim);font-family:var(--f-mono);font-size:11px}
+.energy{display:flex;gap:3px;flex-wrap:wrap}
+.energy i{width:11px;height:11px;border-radius:50%;border:1px solid var(--umpire)}
+.energy i.on{background:var(--umpire)}
+.board{min-height:132px;display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;padding:6px;border-radius:10px;background:#0006}
+.board .hint{color:var(--dim);font-size:12px}
+.unit{position:relative;width:86px;height:116px;border-radius:12px;border:2px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:6px 4px 4px;transition:transform .15s}
+.unit .e{font-size:34px;line-height:1;margin-top:4px}
+.unit .nm{font-size:10px;text-align:center;line-height:1.1;font-weight:600;max-height:2.2em;overflow:hidden}
+.unit .st{display:flex;justify-content:space-between;width:100%;font-family:var(--f-display);font-size:15px;padding:0 4px}
+.unit .st .a{color:var(--gold)}.unit .st .h{color:var(--bad)}
+.unit.guard{border-color:#9aa3b8;box-shadow:inset 0 0 0 3px #9aa3b855}
+.unit.shield::after{content:"";position:absolute;inset:-5px;border-radius:15px;border:2px solid var(--umpire);opacity:.8;pointer-events:none}
+.unit.ready{border-color:var(--good);cursor:pointer}
+.unit.sel{transform:translateY(-8px);border-color:var(--gold);box-shadow:0 6px 18px #ffd23f44}
+.unit.target{border-color:var(--bad);cursor:crosshair}
+.unit.hit{animation:hit .35s}
+@keyframes hit{30%{transform:translateX(-4px);filter:brightness(2)}60%{transform:translateX(4px)}}
+.kw{position:absolute;top:-8px;right:-6px;font-family:var(--f-mono);font-size:9px;background:var(--void);border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--dim)}
+.mid{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:2px 4px}
+.turnbanner{font-family:var(--f-display);font-size:14px;color:var(--gold)}
+.turnbanner.them{color:var(--dim)}
+.hand{display:flex;gap:8px;overflow-x:auto;padding:12px 4px 6px}
+.hand .card{width:122px;flex:none;cursor:pointer;transition:transform .15s}
+.hand .card.play{box-shadow:0 0 0 2px var(--good)}
+.hand .card.play:hover{transform:translateY(-6px)}
+.hand .card.cant{opacity:.55;cursor:default}
+.oppHand{display:flex;gap:3px}
+.oppHand i{width:14px;height:20px;border-radius:3px;background:repeating-linear-gradient(45deg,var(--panel2),var(--panel2) 3px,var(--line) 3px,var(--line) 6px);border:1px solid var(--line)}
+.log{font-family:var(--f-mono);font-size:11.5px;display:flex;flex-direction:column-reverse;gap:4px;max-height:420px;overflow:auto}
+.log div{padding:4px 6px;border-left:2px solid var(--line)}
+.log div.me{border-color:var(--gold)}
+.result{text-align:center;padding:28px 16px}
+.result .big{font-family:var(--f-display);font-size:42px;color:var(--gold);line-height:1}
+.result.lose .big{color:var(--bad)}
+
+/* toast & modal */
+.toasts{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;z-index:50;max-width:min(340px,calc(100vw - 32px))}
+.toast{background:var(--panel2);border:1px solid var(--gold);border-radius:10px;padding:10px 14px;box-shadow:0 8px 30px #0008;animation:tin .25s}
+.toast b{color:var(--gold)}
+@keyframes tin{from{transform:translateY(10px);opacity:0}}
+.modal{position:fixed;inset:0;background:#000b;display:grid;place-items:center;z-index:40;padding:20px}
+.modal .inner{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;max-width:760px;width:100%;max-height:90vh;overflow:auto}
+.reveal{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin:16px 0}
+.reveal .card{animation:flip .5s backwards}
+@keyframes flip{from{transform:rotateY(90deg) scale(.8);opacity:0}}
+.notice{padding:10px 14px;border-radius:8px;border:1px solid var(--rebel);color:#ffd2c2;background:color-mix(in srgb,var(--rebel) 10%,transparent);font-size:13px}
+.ftab{font-variant-numeric:tabular-nums;font-family:var(--f-mono)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<header><div class="wrap bar">
+  <div class="logo">STAR WARTS<small>A NEW HAND</small></div>
+  <nav id="nav" role="tablist">
+    <button data-tab="battle" role="tab">Battle</button>
+    <button data-tab="deck" role="tab">Deck</button>
+    <button data-tab="shop" role="tab">Shop</button>
+    <button data-tab="ach" role="tab">Achievements</button>
+    <button data-tab="ranks" role="tab">Rankings</button>
+  </nav>
+  <button class="btn small gold" id="daily" hidden>Claim daily +50</button>
+  <div class="credz"><span class="coin">C</span><span id="credz" class="ftab">—</span></div>
+</div></header>
+
+<main class="wrap" id="main"></main>
+<div class="toasts" id="toasts"></div>
+<div id="modalHost"></div>
+
+<script>
+/* ============================== CARD DATA ============================== */
+const CARDS = [
+ // commons
+ {id:"farmer",n:"Moisture Farmer",f:"rebel",r:"common",t:"unit",c:1,a:1,h:2,fx:{heal:2},e:"🧑‍🌾",x:"Battlecry: heal your hero 2. Dreams of power converters."},
+ {id:"womp",n:"Womp Rat",f:"neutral",r:"common",t:"unit",c:1,a:1,h:1,kw:["rush"],e:"🐀",x:"Rush. Barely 2 metres. Easy to bullseye."},
+ {id:"teddy",n:"Eewok Warrior",f:"rebel",r:"common",t:"unit",c:1,a:2,h:1,e:"🧸",x:"Has defeated an empire. With rocks."},
+ {id:"gonk",n:"Gonk Droid",f:"neutral",r:"common",t:"unit",c:1,a:0,h:3,kw:["guard"],e:"🔋",x:"Guard. GONK."},
+ {id:"blooper",n:"Stormblooper",f:"umpire",r:"common",t:"unit",c:2,a:3,h:2,kw:["miss"],e:"🪖",x:"Aims badly: half its attacks miss."},
+ {id:"r2",n:"R2-Detour",f:"rebel",r:"common",t:"unit",c:2,a:1,h:3,kw:["shield"],e:"🛞",x:"Shield. Takes the scenic route."},
+ {id:"c3",n:"C-3PNO",f:"rebel",r:"common",t:"unit",c:2,a:0,h:4,kw:["guard"],fx:{draw:1},e:"🗣️",x:"Guard. Battlecry: draw a card. The odds are against you."},
+ {id:"jawa",n:"Jawa-Jawa Scrapper",f:"neutral",r:"common",t:"unit",c:2,a:2,h:2,fx:{draw:1},e:"🪛",x:"Battlecry: draw a card. Utinni-ish."},
+ {id:"tiedye",n:"TIE-Dye Fighter",f:"umpire",r:"common",t:"unit",c:3,a:3,h:2,kw:["rush"],e:"🌈",x:"Rush. Groovy screech of doom."},
+ {id:"band",n:"Cantina Band",f:"neutral",r:"common",t:"unit",c:3,a:2,h:4,fx:{heal:3},e:"🎷",x:"Battlecry: heal your hero 3. Knows one song."},
+ {id:"bacta",n:"Bacta Snack",f:"neutral",r:"common",t:"spell",c:2,fx:{heal:5},e:"🧃",x:"Heal your hero 5. Goopy."},
+ {id:"blaster",n:"Pew Pew",f:"neutral",r:"common",t:"spell",c:1,fx:{rand:2},e:"🔫",x:"Deal 2 to a random enemy unit (or the hero if none)."},
+ // rares
+ {id:"han",n:"Han Yolo",f:"rebel",r:"rare",t:"unit",c:3,a:3,h:3,kw:["rush"],e:"🤠",x:"Rush. Shoots first, apologises never."},
+ {id:"chewie",n:"Chewbagger",f:"rebel",r:"rare",t:"unit",c:4,a:3,h:6,kw:["guard"],e:"🦧",x:"Guard. Carries everyone's luggage."},
+ {id:"snackbar",n:"Admiral Snackbar",f:"rebel",r:"rare",t:"unit",c:3,a:2,h:4,fx:{heal:4,draw:1},e:"🦐",x:"Battlecry: heal 4, draw 1. IT'S A SNACK!"},
+ {id:"lando",n:"Lando Calamarisian",f:"rebel",r:"rare",t:"unit",c:3,a:3,h:2,kw:["shield"],fx:{draw:1},e:"🦑",x:"Shield. Battlecry: draw a card. Smooth as a cape."},
+ {id:"boba",n:"Boba Fettuccine",f:"umpire",r:"rare",t:"unit",c:4,a:4,h:3,fx:{rand:2},e:"🍝",x:"Battlecry: deal 2 to a random enemy. Al dente bounty."},
+ {id:"tarkin",n:"Grand Moth Tarkin",f:"umpire",r:"rare",t:"unit",c:4,a:3,h:3,fx:{face:3},e:"🦋",x:"Battlecry: deal 3 to the enemy hero. Drawn to lasers."},
+ {id:"forks",n:"Use the Forks",f:"neutral",r:"rare",t:"spell",c:3,fx:{draw:2},e:"🍴",x:"Draw 2 cards. Search your cutlery."},
+ {id:"joke",n:"Force Joke",f:"umpire",r:"rare",t:"spell",c:2,fx:{rand:3},e:"😂",x:"Deal 3 to a random enemy. They died laughing."},
+ // epics
+ {id:"laya",n:"Princess Laya Organza",f:"rebel",r:"epic",t:"unit",c:5,a:4,h:5,fx:{heal:5,buff:1},e:"👑",x:"Battlecry: heal 5, your other units get +1 attack. Hair: buns."},
+ {id:"obi",n:"Obi-Wan Kenobee",f:"rebel",r:"epic",t:"unit",c:5,a:4,h:4,kw:["shield"],fx:{all:1},e:"🐝",x:"Shield. Battlecry: deal 1 to all enemy units. Bzzz."},
+ {id:"kylo",n:"Kylo Wren",f:"umpire",r:"epic",t:"unit",c:5,a:6,h:4,kw:["rush"],e:"🐦",x:"Rush. Small bird, big tantrum."},
+ {id:"atate",n:"AT-Ate Walker",f:"umpire",r:"epic",t:"unit",c:6,a:5,h:8,kw:["guard"],e:"🦕",x:"Guard. Ate the last walker."},
+ {id:"jabba",n:"Jabba the Glut",f:"neutral",r:"epic",t:"unit",c:6,a:4,h:9,kw:["guard"],fx:{heal:3},e:"🐌",x:"Guard. Battlecry: heal 3. Ho ho ho."},
+ {id:"breath",n:"Breath Star",f:"umpire",r:"epic",t:"spell",c:6,fx:{all:3},e:"🌑",x:"Deal 3 to all enemy units. Garlic-powered."},
+ // legendaries
+ {id:"lube",n:"Lube Skywiper",f:"rebel",r:"legendary",t:"unit",c:6,a:6,h:5,kw:["rush","shield"],e:"🧽",x:"Rush. Shield. Just a farm boy with a squeegee."},
+ {id:"yodel",n:"Yodel",f:"rebel",r:"legendary",t:"unit",c:7,a:5,h:7,kw:["shield"],fx:{all:3,heal:5},e:"🏔️",x:"Shield. Battlecry: 3 to all enemies, heal 5. Yodel-ay-hee, you will."},
+ {id:"wader",n:"Darth Wader",f:"umpire",r:"legendary",t:"unit",c:8,a:8,h:8,kw:["guard"],fx:{face:4},e:"🥾",x:"Guard. Battlecry: 4 to the enemy hero. I am your fisherman."},
+ {id:"palp",n:"Emperor Palpitations",f:"umpire",r:"legendary",t:"unit",c:9,a:7,h:6,fx:{all:4},e:"⚡",x:"Battlecry: 4 to all enemy units. Unlimited cardio!"},
+];
+const CARD = Object.fromEntries(CARDS.map(c=>[c.id,c]));
+const PRICE = {common:40,rare:120,epic:300,legendary:800};
+const RARITY_ORDER = ["common","rare","epic","legendary"];
+const COMMONS = CARDS.filter(c=>c.r==="common").map(c=>c.id);
+const START_DECK = ["farmer","womp","teddy","gonk","blooper","r2","c3","jawa","tiedye","band"].flatMap(x=>[x,x]);
+const maxCopies = id => CARD[id].r==="legendary"?1:2;
+const DECK_SIZE = 20;
+
+const PACKS = [
+ {id:"bantha",n:"Bantha Booster",price:150,count:5,guar:"rare",desc:"5 cards · at least one Rare"},
+ {id:"kyber",n:"Kyber Crate",price:420,count:5,guar:"epic",desc:"5 cards · at least one Epic · better Legendary odds"},
+];
+const REWARD = {pvpWin:60,pvpLoss:15,botWin:20,botLoss:5,daily:50};
+
+const ACHS = [
+ {id:"first",n:"First Blood (Probably Ketchup)",d:"Win any match.",rw:50,m:"🏅",p:s=>[s.wins+s.botWins,1]},
+ {id:"bot3",n:"Droid Bully",d:"Beat the Training Droid 3 times.",rw:75,m:"🤖",p:s=>[s.botWins,3]},
+ {id:"pvp1",n:"Not a Bot",d:"Win a match against a real player.",rw:100,m:"🧑‍🚀",p:s=>[s.wins,1]},
+ {id:"pvp5",n:"Kessel Run in 5 Wins",d:"Win 5 matches against players.",rw:200,m:"🚀",p:s=>[s.wins,5]},
+ {id:"pvp25",n:"Galactic Menace",d:"Win 25 matches against players.",rw:600,m:"☄️",p:s=>[s.wins,25]},
+ {id:"played20",n:"Space Veteran",d:"Finish 20 matches of any kind.",rw:200,m:"🎖️",p:s=>[s.played,20]},
+ {id:"shop",n:"Retail Therapy",d:"Buy a card or pack.",rw:25,m:"🛒",p:s=>[s.buys,1]},
+ {id:"col20",n:"Hoarder of the Rings",d:"Own 20 different cards.",rw:150,m:"📦",p:(s,pr)=>[Object.keys(pr.col).filter(k=>pr.col[k]>0).length,20]},
+ {id:"leg",n:"Legend in Your Own Mind",d:"Own a Legendary card.",rw:150,m:"🌟",p:(s,pr)=>[Object.keys(pr.col).some(k=>pr.col[k]>0&&CARD[k]?.r==="legendary")?1:0,1]},
+ {id:"big",n:"Trench Run",d:"Deal 10+ damage to the enemy hero in one turn.",rw:100,m:"💥",p:s=>[Math.min(s.bigHit,10),10]},
+ {id:"flaw",n:"Barely a Scratch",d:"Win with 20 or more health left.",rw:100,m:"🛡️",p:s=>[s.flawless,1]},
+ {id:"daily7",n:"Creature of Habit",d:"Claim the daily bonus 7 times.",rw:150,m:"📅",p:s=>[s.dailies,7]},
+];
+
+/* ============================== ENGINE ============================== */
+const HP0=25, MAX_BOARD=6, MAX_HAND=8;
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function newGame(deckA,deckB,first){
+  const mk=d=>({hp:HP0,maxE:0,e:0,deck:shuffle(d.slice()),hand:[],board:[],fat:0,dmgTurn:0,bigHit:0});
+  const s={p:[mk(deckA),mk(deckB)],turn:first,turnNo:0,log:[],winner:null,uid:1,seq:0};
+  for(let k=0;k<3;k++){draw(s,0);draw(s,1)}
+  draw(s,1-first);
+  startTurn(s);
+  return s;
+}
+function L(s,who,msg){s.log.push({w:who,m:msg});if(s.log.length>40)s.log.shift()}
+function draw(s,i){
+  const p=s.p[i];
+  if(!p.deck.length){p.fat++;p.hp-=p.fat;L(s,i,`Out of cards! Space madness deals ${p.fat}.`);return}
+  const id=p.deck.shift();
+  if(p.hand.length>=MAX_HAND){L(s,i,`Hand full, ${CARD[id].n} floats off into space.`);return}
+  p.hand.push({u:s.uid++,c:id});
+}
+function startTurn(s){
+  const p=s.p[s.turn];
+  p.maxE=Math.min(10,p.maxE+1);p.e=p.maxE;p.dmgTurn=0;
+  p.board.forEach(u=>u.ready=true);
+  s.turnNo++;draw(s,s.turn);checkWin(s);
+}
+function hitHero(s,i,n){const p=s.p[i];p.hp-=n;const o=s.p[1-i];o.dmgTurn+=n;o.bigHit=Math.max(o.bigHit,o.dmgTurn)}
+function hitUnit(u,n){if(n<=0)return false;if(u.shield){u.shield=false;return false}u.hp-=n;return true}
+function cleanup(s){for(const i of [0,1]){const p=s.p[i];const dead=p.board.filter(u=>u.hp<=0);dead.forEach(u=>L(s,i,`${CARD[u.c].n} is destroyed.`));p.board=p.board.filter(u=>u.hp>0)}}
+function checkWin(s){
+  if(s.winner!=null)return;
+  const d0=s.p[0].hp<=0,d1=s.p[1].hp<=0;
+  if(d0&&d1)s.winner=s.turn;else if(d0)s.winner=1;else if(d1)s.winner=0;
+}
+function hasGuard(p){return p.board.some(u=>u.guard)}
+function applyFx(s,i,fx,self){
+  const me=s.p[i],foe=s.p[1-i];
+  if(fx.heal){const before=me.hp;me.hp=Math.min(HP0,me.hp+fx.heal);L(s,i,`Heals ${me.hp-before}.`)}
+  if(fx.face){hitHero(s,1-i,fx.face);L(s,i,`Deals ${fx.face} to the enemy hero.`)}
+  if(fx.rand){const live=foe.board.filter(u=>u.hp>0);if(live.length){const t=live[Math.floor(Math.random()*live.length)];hitUnit(t,fx.rand);L(s,i,`Zaps ${CARD[t.c].n} for ${fx.rand}.`)}else{hitHero(s,1-i,fx.rand);L(s,i,`Zaps the enemy hero for ${fx.rand}.`)}}
+  if(fx.all){foe.board.forEach(u=>hitUnit(u,fx.all));L(s,i,`Blasts all enemy units for ${fx.all}.`)}
+  if(fx.buff){me.board.forEach(u=>{if(u!==self)u.atk+=fx.buff})}
+  if(fx.draw){for(let k=0;k<fx.draw;k++)draw(s,i)}
+}
+// action: {k:"play",u} | {k:"atk",u,t:"hero"|uid} | {k:"end"} | {k:"concede"}
+function act(state,i,a){
+  if(state.winner!=null)return{err:"Game over"};
+  const s=structuredClone(state);const me=s.p[i],foe=s.p[1-i];
+  if(a.k==="concede"){s.winner=1-i;L(s,i,"Concedes. Runs away screaming.");s.seq++;return{s}}
+  if(s.turn!==i)return{err:"Not your turn"};
+  if(a.k==="play"){
+    const hi=me.hand.findIndex(h=>h.u===a.u);if(hi<0)return{err:"Card not in hand"};
+    const card=CARD[me.hand[hi].c];
+    if(card.c>me.e)return{err:"Not enough energy"};
+    if(card.t==="unit"&&me.board.length>=MAX_BOARD)return{err:"Board full"};
+    me.hand.splice(hi,1);me.e-=card.c;
+    let unit=null;
+    if(card.t==="unit"){const kw=card.kw||[];unit={u:s.uid++,c:card.id,atk:card.a,hp:card.h,max:card.h,ready:kw.includes("rush"),guard:kw.includes("guard"),shield:kw.includes("shield"),miss:kw.includes("miss")};me.board.push(unit)}
+    L(s,i,`Plays ${card.n}.`);
+    if(card.fx)applyFx(s,i,card.fx,unit);
+  } else if(a.k==="atk"){
+    const at=me.board.find(u=>u.u===a.u);if(!at||!at.ready||at.atk<=0)return{err:"That unit can't attack"};
+    const guards=hasGuard(foe);
+    if(a.t==="hero"){
+      if(guards)return{err:"A Guard is in the way"};
+      at.ready=false;
+      if(at.miss&&Math.random()<.5)L(s,i,`${CARD[at.c].n} misses the hero completely.`);
+      else{hitHero(s,1-i,at.atk);L(s,i,`${CARD[at.c].n} hits the hero for ${at.atk}.`)}
+    } else {
+      const t=foe.board.find(u=>u.u===a.t);if(!t)return{err:"No target"};
+      if(guards&&!t.guard)return{err:"Attack a Guard first"};
+      at.ready=false;
+      if(at.miss&&Math.random()<.5){L(s,i,`${CARD[at.c].n} shoots at ${CARD[t.c].n} and misses.`)}
+      else{hitUnit(t,at.atk);hitUnit(at,t.atk);L(s,i,`${CARD[at.c].n} fights ${CARD[t.c].n}.`)}
+    }
+  } else if(a.k==="end"){
+    L(s,i,"Ends turn.");s.turn=1-i;startTurn(s);
+  } else return{err:"Unknown action"};
+  cleanup(s);checkWin(s);s.seq++;
+  return{s};
+}
+
+/* ============================== BOT ============================== */
+function botMove(s,i){
+  const me=s.p[i],foe=s.p[1-i];
+  const playable=me.hand.map(h=>({h,c:CARD[h.c]})).filter(x=>x.c.c<=me.e&&(x.c.t==="spell"||me.board.length<MAX_BOARD))
+    .filter(x=>!(x.c.t==="spell"&&x.c.fx.heal&&me.hp>HP0-3)).sort((a,b)=>b.c.c-a.c.c);
+  if(playable.length)return{k:"play",u:playable[0].h.u};
+  const ready=me.board.filter(u=>u.ready&&u.atk>0);
+  if(ready.length){
+    const at=ready[0];const guards=foe.board.filter(u=>u.guard);
+    if(guards.length){guards.sort((a,b)=>a.hp-b.hp);return{k:"atk",u:at.u,t:guards[0].u}}
+    const total=ready.reduce((n,u)=>n+u.atk,0);
+    if(total>=foe.hp)return{k:"atk",u:at.u,t:"hero"};
+    const good=foe.board.filter(t=>!t.shield&&t.hp<=at.atk&&t.atk<at.hp).sort((a,b)=>b.atk-a.atk);
+    if(good.length)return{k:"atk",u:at.u,t:good[0].u};
+    return{k:"atk",u:at.u,t:"hero"};
+  }
+  return{k:"end"};
+}
+
+/* ============================== PLATFORM ============================== */
+const $=s=>document.querySelector(s);
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const today=()=>new Date().toISOString().slice(0,10);
+const rid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+
+const P={db:null,user:null,room:null,uid:null,canWrite:true,online:0};
+let profile=null, tab="battle";
+let names={};
+
+function defaultProfile(){
+  const col={};COMMONS.forEach(id=>col[id]=2);
+  return{credz:200,col,deck:START_DECK.slice(),ach:{},stats:{wins:0,losses:0,botWins:0,botLosses:0,played:0,buys:0,bigHit:0,flawless:0,dailies:0},lastDaily:"",credited:[],v:1};
+}
+function fixProfile(p){const d=defaultProfile();p={...d,...p};p.stats={...d.stats,...(p.stats||{})};p.col={...(p.col||{})};p.ach={...(p.ach||{})};p.credited=p.credited||[];return p}
+
+/* profile persistence: one write at a time */
+let saving=false,dirty=false;
+function profRef(){return P.db&&P.uid?P.db.doc(`data/users/${P.uid}/profile`):null}
+async function save(){
+  dirty=true;if(saving)return;saving=true;
+  try{
+    while(dirty){dirty=false;const r=profRef();
+      if(r){try{await r.set(JSON.parse(JSON.stringify(profile)))}catch(e){console.warn(e);if(e.code==="invalid_argument"){P.canWrite=false}}}
+      else{try{localStorage.setItem("sw-profile",JSON.stringify(profile))}catch{}}
+    }
+  }finally{saving=false}
+}
+async function loadProfile(){
+  const r=profRef();
+  if(r){try{const snap=await r.get();if(snap.exists){profile=fixProfile(snap.data());return}}catch(e){console.warn(e)}
+    profile=defaultProfile();save();return}
+  try{const raw=localStorage.getItem("sw-profile");profile=raw?fixProfile(JSON.parse(raw)):defaultProfile()}catch{profile=defaultProfile()}
+}
+async function pushPublic(){
+  if(!P.db||!P.uid||!P.canWrite)return;
+  const s=profile.stats;
+  try{await P.db.doc(`players/${P.uid}`).set({wins:s.wins,losses:s.losses,played:s.wins+s.losses,updatedAt:Date.now()})}catch(e){console.warn(e)}
+}
+
+function toast(html){const t=document.createElement("div");t.className="toast";t.innerHTML=html;$("#toasts").append(t);setTimeout(()=>t.remove(),4200)}
+function addCredz(n,why){profile.credz+=n;if(why)toast(`<b>+${n} credz</b> · ${esc(why)}`)}
+function checkAchs(){
+  let changed=false;
+  for(const a of ACHS){if(profile.ach[a.id])continue;const[v,goal]=a.p(profile.stats,profile);
+    if(v>=goal){profile.ach[a.id]=Date.now();profile.credz+=a.rw;changed=true;toast(`🏆 <b>${esc(a.n)}</b><br>Achievement unlocked · +${a.rw} credz`)}}
+  return changed;
+}
+function commit(){checkAchs();save();renderHeader()}
+
+async function resolveNames(ids){
+  ids=[...new Set(ids.filter(Boolean))];if(!ids.length||!P.user)return;
+  try{const ps=await P.user.profiles(ids);for(const id of ids)names[id]=ps[id]||{name:""}}catch{}
+}
+const nm=id=>id===P.uid?"You":(names[id]?.name||"Pilot "+String(id||"").slice(-4));
+const av=id=>names[id]?.avatarUrl||"";
+
+/* ============================== HEADER / NAV ============================== */
+function renderHeader(){
+  $("#credz").textContent=profile?profile.credz.toLocaleString():"—";
+  $("#daily").hidden=!profile||profile.lastDaily===today();
+  document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===tab)));
+}
+$("#nav").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;if(game&&!game.over&&b.dataset.tab!=="battle"){/* allow browsing during game */}tab=b.dataset.tab;render()});
+$("#daily").addEventListener("click",()=>{if(profile.lastDaily===today())return;profile.lastDaily=today();profile.stats.dailies++;addCredz(REWARD.daily,"Daily bonus");commit()});
+
+/* ============================== CARD RENDER ============================== */
+function cardHTML(c,extra=""){
+  const st=c.t==="unit"?`<div class="stats"><span class="atk">⚔${c.a}</span><span class="hp">♥${c.h}</span></div>`:`<div class="stats"><span class="muted" style="font-family:var(--f-mono);font-size:10px">SPELL</span></div>`;
+  return `<div class="card ${c.r} ${c.f}" ${extra}><div class="cost">${c.c}</div><span class="tag">${c.r}</span><div class="art" aria-hidden="true">${c.e}</div><div class="name">${esc(c.n)}</div><div class="txt">${esc(c.x)}</div>${st}</div>`;
+}
+
+/* ============================== TABS ============================== */
+function render(){
+  renderHeader();
+  const m=$("#main");
+  if(!profile){m.innerHTML=`<div class="empty">Booting hyperdrive…</div>`;return}
+  if(tab==="battle")return game?renderGame():renderLobby();
+  if(tab==="deck")return renderDeck();
+  if(tab==="shop")return renderShop();
+  if(tab==="ach")return renderAchs();
+  if(tab==="ranks")return renderRanks();
+}
+
+/* ---------- LOBBY ---------- */
+let openMatches=[],myMatches=[],ranks=[];
+function deckValid(d=profile.deck){if(d.length!==DECK_SIZE)return false;const cnt={};for(const id of d){cnt[id]=(cnt[id]||0)+1;if(!CARD[id]||cnt[id]>(profile.col[id]||0)||cnt[id]>maxCopies(id))return false}return true}
+function renderLobby(){
+  const online=!!(P.db&&P.uid&&P.canWrite);
+  const mine=myMatches.filter(m=>m.status!=="done");
+  const open=openMatches.filter(m=>m.host!==P.uid&&Date.now()-(m.created||0)<3600e3);
+  const ids=[...open.map(m=>m.host),...mine.flatMap(m=>m.players||[])];
+  resolveNames(ids).then(()=>{if(tab==="battle"&&!game)paintLobbyNames()});
+  $("#main").innerHTML=`
+  <div class="crawl" aria-hidden="true"><div class="crawl-inner"><div class="ep">EPISODE IV-ISH</div><div class="t">A NEW HAND</div>
+   <p>It is a period of mild unrest. Rebellious Teens, striking from a hidden garage, have won their first card game against the evil Galactic Umpire.</p></div></div>
+  <div class="grid2">
+   <div class="stack">
+    ${!deckValid()?`<div class="notice">Your deck needs exactly ${DECK_SIZE} cards you own before you can battle. Fix it on the Deck tab.</div>`:""}
+    ${!online?`<div class="notice">${P.db?"You can view this page but not play online. Ask the owner to give you Contributor or Editor access.":"Online play is unavailable here, so progress is saved in this browser only. Training matches still work."}</div>`:""}
+    <div class="panel stack">
+      <div class="row" style="justify-content:space-between"><div><h2>1v1 Duels</h2><div class="muted">Win ${REWARD.pvpWin} credz. Lose and still get ${REWARD.pvpLoss}.</div></div>
+      <span class="pill live" id="onlineCount">${P.online?P.online+" online":"lobby"}</span></div>
+      <div class="row"><button class="btn gold" id="host" ${online&&deckValid()?"":"disabled"}>Open a duel</button><span class="muted" style="font-size:13px">Anyone in the lobby can accept it.</span></div>
+      <h3 style="margin-top:6px">Your matches</h3>
+      <div class="list" id="mine">${mine.length?mine.map(m=>{
+        const waiting=m.status==="open";const myIdx=(m.players||[]).indexOf(P.uid);const myTurn=m.state&&m.state.turn===myIdx;
+        const opp=(m.players||[]).find(x=>x!==P.uid);
+        return `<div class="li"><div class="grow"><b data-name="${esc(opp||"")}">${waiting?"Waiting for a challenger…":"vs "+esc(nm(opp))}</b></div>
+          ${waiting?`<span class="pill">open</span><button class="btn small danger" data-cancel="${esc(m.id)}">Cancel</button>`:`<span class="pill ${myTurn?"turn":""}">${myTurn?"your turn":"their turn"}</span><button class="btn small gold" data-resume="${esc(m.id)}">Play</button>`}</div>`}).join(""):`<div class="empty">No duels yet. Open one, or accept one below.</div>`}</div>
+      <h3 style="margin-top:6px">Open challenges</h3>
+      <div class="list" id="open">${open.length?open.map(m=>`<div class="li"><img class="avatar" alt="" data-av="${esc(m.host)}" src="${esc(av(m.host))}"><div class="grow"><b data-name="${esc(m.host)}">${esc(nm(m.host))}</b><div class="muted" style="font-size:12px">opened ${Math.max(1,Math.round((Date.now()-m.created)/60000))} min ago</div></div><button class="btn small gold" data-join="${esc(m.id)}" ${online&&deckValid()?"":"disabled"}>Accept</button></div>`).join(""):`<div class="empty">No open challenges right now.</div>`}</div>
+    </div>
+   </div>
+   <div class="stack">
+    <div class="panel stack">
+      <h2>Training Droid</h2>
+      <div class="muted">Practise against a slightly rusty bot. Win ${REWARD.botWin} credz.</div>
+      <button class="btn" id="bot" ${deckValid()?"":"disabled"}>Fight the droid</button>
+    </div>
+    <div class="panel">
+      <h3>How to play</h3>
+      <div class="muted" style="font-size:13.5px;display:flex;flex-direction:column;gap:6px">
+       <span>Both heroes start on 25 health. Reduce the other one to zero.</span>
+       <span>You gain one energy crystal per turn, up to 10. Tap a glowing card in your hand to play it.</span>
+       <span>Units can attack the turn after they arrive. Tap a green unit, then tap an enemy unit or hero.</span>
+       <span><b>Guard</b> units must be attacked first. <b>Shield</b> blocks the first hit. <b>Rush</b> attacks straight away.</span>
+      </div>
+    </div>
+   </div>
+  </div>`;
+  $("#host")?.addEventListener("click",hostMatch);
+  $("#bot")?.addEventListener("click",startBot);
+  $("#main").querySelectorAll("[data-join]").forEach(b=>b.onclick=()=>joinMatch(b.dataset.join,b));
+  $("#main").querySelectorAll("[data-resume]").forEach(b=>b.onclick=()=>enterMatch(b.dataset.resume));
+  $("#main").querySelectorAll("[data-cancel]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await P.db.doc(`matches/${b.dataset.cancel}`).delete()}catch(e){toast("Could not cancel: "+esc(e.message||e.code))}});
+}
+function paintLobbyNames(){
+  document.querySelectorAll("[data-name]").forEach(el=>{const id=el.dataset.name;if(!id)return;el.textContent=el.textContent.startsWith("vs ")?"vs "+nm(id):nm(id)});
+  document.querySelectorAll("[data-av]").forEach(el=>{const u=av(el.dataset.av);if(u)el.src=u});
+}
+
+/* ---------- DECK ---------- */
+let deckDraft=null, deckFilter="all";
+function renderDeck(){
+  if(!deckDraft)deckDraft=profile.deck.slice();
+  const cnt={};deckDraft.forEach(id=>cnt[id]=(cnt[id]||0)+1);
+  const owned=CARDS.filter(c=>(profile.col[c.id]||0)>0);
+  const shown=owned.filter(c=>deckFilter==="all"||c.r===deckFilter).sort((a,b)=>a.c-b.c||a.n.localeCompare(b.n));
+  const valid=deckValid(deckDraft);const same=JSON.stringify([...deckDraft].sort())===JSON.stringify([...profile.deck].sort());
+  const dlist=Object.keys(cnt).sort((a,b)=>CARD[a].c-CARD[b].c).map(id=>`<div class="dl"><span class="c">${CARD[id].c}</span><span class="n">${esc(CARD[id].n)}</span><span class="muted ftab">×${cnt[id]}</span></div>`).join("");
+  $("#main").innerHTML=`<div class="grid2" style="grid-template-columns:minmax(0,1fr) minmax(0,280px)">
+   <div class="stack">
+    <div><h2>Your collection</h2><div class="muted">${owned.length} of ${CARDS.length} cards discovered. Up to 2 copies of each card, 1 of each Legendary.</div></div>
+    <div class="filters">${["all",...RARITY_ORDER].map(r=>`<button class="chip" data-f="${r}" aria-pressed="${deckFilter===r}">${r}</button>`).join("")}</div>
+    <div class="cards">${shown.map(c=>{const own=profile.col[c.id]||0,inD=cnt[c.id]||0,lim=Math.min(own,maxCopies(c.id));
+      return `<div class="cardbox">${cardHTML(c)}<div class="row"><span class="muted ftab" style="font-size:12px">own ${own}</span><div class="qty"><button data-rm="${c.id}" ${inD?"":"disabled"} aria-label="Remove ${esc(c.n)}">−</button><span class="ftab">${inD}</span><button data-add="${c.id}" ${inD<lim&&deckDraft.length<DECK_SIZE?"":"disabled"} aria-label="Add ${esc(c.n)}">+</button></div></div></div>`}).join("")||`<div class="empty">No cards in this rarity yet. The shop has some.</div>`}</div>
+   </div>
+   <div><div class="panel stack deckbar">
+    <div class="row" style="justify-content:space-between"><h3 style="margin:0">Deck</h3><span class="ftab" style="color:${valid?"var(--good)":"var(--text)"}">${deckDraft.length}/${DECK_SIZE}</span></div>
+    <div class="meter"><i style="width:${deckDraft.length/DECK_SIZE*100}%"></i></div>
+    <div class="decklist">${dlist||`<div class="empty">Empty deck. Add cards with +.</div>`}</div>
+    <div class="row"><button class="btn gold" id="saveDeck" ${valid&&!same?"":"disabled"}>${same&&valid?"Saved":"Save deck"}</button><button class="btn small" id="autoDeck">Auto-build</button></div>
+   </div></div></div>`;
+  $("#main").querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{deckFilter=b.dataset.f;renderDeck()});
+  $("#main").querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>{deckDraft.push(b.dataset.add);renderDeck()});
+  $("#main").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{const i=deckDraft.indexOf(b.dataset.rm);if(i>=0)deckDraft.splice(i,1);renderDeck()});
+  $("#saveDeck").onclick=()=>{profile.deck=deckDraft.slice();commit();toast("Deck saved");renderDeck()};
+  $("#autoDeck").onclick=()=>{
+    const pool=[];CARDS.slice().sort((a,b)=>RARITY_ORDER.indexOf(b.r)-RARITY_ORDER.indexOf(a.r)||b.c-a.c).forEach(c=>{for(let k=0;k<Math.min(profile.col[c.id]||0,maxCopies(c.id));k++)pool.push(c.id)});
+    // keep curve sane: take strongest but cap cards costing 6+ at 5
+    const out=[],skipped=[];let big=0;for(const id of pool){if(out.length>=DECK_SIZE)break;if(CARD[id].c>=6&&big>=5){skipped.push(id);continue}if(CARD[id].c>=6)big++;out.push(id)}
+    for(const id of skipped){if(out.length>=DECK_SIZE)break;out.push(id)}
+    deckDraft=out.slice(0,DECK_SIZE);renderDeck();
+  };
+}
+
+/* ---------- SHOP ---------- */
+let shopFilter="all";
+function rollRarity(premium){const r=Math.random();if(premium)return r<.08?"legendary":r<.30?"epic":r<.65?"rare":"common";return r<.02?"legendary":r<.09?"epic":r<.30?"rare":"common"}
+function pickOf(r){const pool=CARDS.filter(c=>c.r===r);return pool[Math.floor(Math.random()*pool.length)].id}
+function openPack(pk){
+  if(profile.credz<pk.price)return;
+  profile.credz-=pk.price;profile.stats.buys++;
+  const got=[];for(let k=0;k<pk.count;k++)got.push(pickOf(rollRarity(pk.id==="kyber")));
+  if(!got.some(id=>RARITY_ORDER.indexOf(CARD[id].r)>=RARITY_ORDER.indexOf(pk.guar)))got[pk.count-1]=pickOf(pk.guar);
+  got.forEach(id=>profile.col[id]=(profile.col[id]||0)+1);
+  deckDraft=null;commit();
+  showModal(`<h2>${esc(pk.n)}</h2><div class="muted">Fresh from a Tatooine vending machine.</div><div class="reveal">${got.map((id,i)=>cardHTML(CARD[id],`style="animation-delay:${i*.15}s"`)).join("")}</div><button class="btn gold" data-close>Nice</button>`);
+  renderShop();
+}
+function buyCard(id){const pr=PRICE[CARD[id].r];if(profile.credz<pr)return;profile.credz-=pr;profile.stats.buys++;profile.col[id]=(profile.col[id]||0)+1;deckDraft=null;commit();toast(`Bought <b>${esc(CARD[id].n)}</b>`);renderShop()}
+function renderShop(){
+  const shown=CARDS.filter(c=>shopFilter==="all"||c.r===shopFilter).sort((a,b)=>RARITY_ORDER.indexOf(a.r)-RARITY_ORDER.indexOf(b.r)||a.c-b.c);
+  $("#main").innerHTML=`<h2>Watto's Junk Emporium</h2><div class="muted" style="margin-bottom:14px">Spend credz on packs or buy exactly the card you want. Credz come from duels, the droid, daily bonuses and achievements.</div>
+  <div class="packs">${PACKS.map(p=>`<div class="pack ${p.id==="kyber"?"premium":""}"><div class="box">${p.id==="kyber"?"KYBER<br>CRATE":"BANTHA<br>PACK"}</div><div class="stack" style="gap:6px;flex:1;min-width:0"><b>${esc(p.n)}</b><span class="muted" style="font-size:13px">${esc(p.desc)}</span><button class="btn small gold" data-pack="${p.id}" ${profile.credz>=p.price?"":"disabled"}><span class="ftab">${p.price}</span> credz</button></div></div>`).join("")}</div>
+  <h3>Single cards</h3>
+  <div class="filters">${["all",...RARITY_ORDER].map(r=>`<button class="chip" data-f="${r}" aria-pressed="${shopFilter===r}">${r}${r!=="all"?" · "+PRICE[r]:""}</button>`).join("")}</div>
+  <div class="cards">${shown.map(c=>{const own=profile.col[c.id]||0;const pr=PRICE[c.r];return `<div class="cardbox">${cardHTML(c,own?"":'style="opacity:.85"')}<div class="row"><span class="muted ftab" style="font-size:12px">own ${own}</span><button class="btn small ${profile.credz>=pr?"gold":""}" data-buy="${c.id}" ${profile.credz>=pr?"":"disabled"}><span class="ftab">${pr}</span></button></div></div>`}).join("")}</div>`;
+  $("#main").querySelectorAll("[data-pack]").forEach(b=>b.onclick=()=>openPack(PACKS.find(p=>p.id===b.dataset.pack)));
+  $("#main").querySelectorAll("[data-buy]").forEach(b=>b.onclick=()=>buyCard(b.dataset.buy));
+  $("#main").querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{shopFilter=b.dataset.f;renderShop()});
+}
+
+/* ---------- ACHIEVEMENTS ---------- */
+function renderAchs(){
+  const done=ACHS.filter(a=>profile.ach[a.id]).length;const s=profile.stats;
+  $("#main").innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:14px"><div><h2>Achievements</h2><div class="muted">${done} of ${ACHS.length} unlocked. Each one pays out credz once.</div></div>
+  <div class="row"><span class="pill">PvP ${s.wins}W · ${s.losses}L</span><span class="pill">Droid ${s.botWins}W · ${s.botLosses}L</span></div></div>
+  <div class="achs">${ACHS.map(a=>{const[v,g]=a.p(s,profile);const ok=!!profile.ach[a.id];return `<div class="ach ${ok?"done":""}"><div class="medal" aria-hidden="true">${a.m}</div><div style="min-width:0"><b>${esc(a.n)}</b><div class="muted" style="font-size:13px">${esc(a.d)}</div><div class="row" style="gap:12px;margin-top:4px"><span class="rw">+${a.rw} credz</span><span class="prog">${ok?"done":Math.min(v,g)+" / "+g}</span></div></div></div>`}).join("")}</div>`;
+}
+
+/* ---------- RANKS ---------- */
+function renderRanks(){
+  resolveNames(ranks.map(r=>r.id)).then(()=>{if(tab==="ranks")paintLobbyNames()});
+  $("#main").innerHTML=`<h2>Galactic Rankings</h2><div class="muted" style="margin-bottom:14px">Most duel wins against real players.</div>
+  <div class="panel"><div class="list">${ranks.length?ranks.map((r,i)=>`<div class="li"><span class="ftab" style="width:26px;color:${i<3?"var(--gold)":"var(--dim)"}">${i+1}</span><img class="avatar" alt="" data-av="${esc(r.id)}" src="${esc(av(r.id))}"><div class="grow"><b data-name="${esc(r.id)}">${esc(nm(r.id))}</b></div><span class="ftab">${r.wins} W</span><span class="ftab muted">${r.losses||0} L</span></div>`).join(""):`<div class="empty">${P.db?"Nobody has won a duel yet. Be first.":"Rankings need online play."}</div>`}</div></div>`;
+}
+
+/* ============================== MODAL ============================== */
+function showModal(html){const h=$("#modalHost");h.innerHTML=`<div class="modal" role="dialog" aria-modal="true"><div class="inner">${html}</div></div>`;
+  h.querySelector("[data-close]")?.addEventListener("click",()=>h.innerHTML="");h.querySelector(".modal").addEventListener("click",e=>{if(e.target.classList.contains("modal"))h.innerHTML=""})}
+
+/* ============================== GAME CONTROLLER ============================== */
+// game = {mode:"bot"|"pvp", s, me, oppId, matchId, over, sel, busy}
+let game=null, matchUnsub=null, matchRoom=null;
+
+function startBot(){
+  if(!deckValid())return;
+  const botDeck=[...shuffle(COMMONS.flatMap(x=>[x,x])).slice(0,18),...shuffle(CARDS.filter(c=>c.r==="rare").map(c=>c.id)).slice(0,2)];
+  const s=newGame(profile.deck,botDeck,Math.random()<.5?0:1);
+  game={mode:"bot",s,me:0,oppName:"Training Droid TD-0",over:false,sel:null};
+  tab="battle";render();maybeBot();
+}
+function maybeBot(){
+  if(!game||game.mode!=="bot"||game.s.winner!=null||game.s.turn!==1)return;
+  setTimeout(()=>{if(!game||game.mode!=="bot"||game.s.turn!==1||game.s.winner!=null)return;
+    const r=act(game.s,1,botMove(game.s,1));if(r.s){game.s=r.s}else{game.s=act(game.s,1,{k:"end"}).s}
+    afterState();maybeBot()},650);
+}
+
+async function hostMatch(){
+  if(!deckValid())return;
+  const id=rid();
+  try{await P.db.doc(`matches/${id}`).set({status:"open",host:P.uid,players:[P.uid],hostDeck:profile.deck.slice(),created:Date.now(),updatedAt:Date.now(),seq:0})
+    toast("Duel opened. It appears under Your matches until someone accepts.");
+  }catch(e){toast("Could not open a duel: "+esc(e.message||e.code))}
+}
+async function joinMatch(id,btn){
+  if(btn)btn.disabled=true;
+  const ref=P.db.doc(`matches/${id}`);
+  try{
+    const l=await ref.acquire({holder:P.uid,ttlMs:5000});
+    if(!l.acquired){toast("Someone else is accepting that duel.");return}
+    const snap=await ref.get();const m=snap.exists&&snap.data();
+    if(!m||m.status!=="open"||m.guest){toast("That duel was already taken.");return}
+    const first=Math.random()<.5?0:1;
+    const s=newGame(m.hostDeck,profile.deck,first);
+    await ref.set({...m,status:"active",guest:P.uid,players:[m.host,P.uid],state:s,seq:s.seq,updatedAt:Date.now()});
+    enterMatch(id);
+  }catch(e){toast("Could not join: "+esc(e.message||e.code))}
+  finally{if(btn)btn.disabled=false}
+}
+async function enterMatch(id){
+  leaveMatch();
+  const ref=P.db.doc(`matches/${id}`);
+  game={mode:"pvp",matchId:id,s:null,me:-1,over:false,sel:null,ref};
+  tab="battle";render();
+  matchUnsub=ref.onSnapshot(snap=>{
+    if(!game||game.matchId!==id)return;
+    if(!snap.exists){toast("That match no longer exists.");game=null;render();return}
+    const m=snap.data();game.m=m;
+    game.me=(m.players||[]).indexOf(P.uid);
+    game.oppId=(m.players||[]).find(x=>x!==P.uid);
+    if(m.state&&(!game.s||(m.state.seq||0)>(game.s.seq||0)))game.s=m.state;
+    resolveNames([game.oppId]).then(()=>{if(game&&tab==="battle")renderGame()});
+    afterState();
+  },e=>{toast("Lost contact with the match: "+esc(e.message||e.code))});
+  try{
+    matchRoom=await P.room?.join("m-"+id);
+    matchRoom?.on("poke",async msg=>{if(msg.sameTab||!game||game.matchId!==id)return;try{const sn=await ref.get();if(sn.exists){const m=sn.data();if(m.state&&m.state.seq>(game.s?.seq||0)){game.m=m;game.s=m.state;afterState()}}}catch{}});
+  }catch{matchRoom=null}
+}
+function leaveMatch(){if(matchUnsub){matchUnsub();matchUnsub=null}if(matchRoom){matchRoom.leave().catch(()=>{});matchRoom=null}}
+
+let writeChain=Promise.resolve();
+function doAction(a){
+  if(!game||!game.s||game.over)return;
+  const r=act(game.s,game.me,a);
+  if(r.err){toast(esc(r.err));return}
+  const prev=game.s;game.s=r.s;game.sel=null;
+  animateDiff(prev,r.s);
+  afterState();
+  if(game.mode==="bot")maybeBot();
+  else{
+    const s=r.s,ref=game.ref,winnerId=s.winner!=null?game.m.players[s.winner]:null;
+    writeChain=writeChain.then(()=>ref.update({state:s,seq:s.seq,status:s.winner!=null?"done":"active",winner:winnerId,updatedAt:Date.now()}))
+      .then(()=>matchRoom?.emit("poke",{seq:s.seq}).catch(()=>{}))
+      .catch(e=>toast("Move didn't save: "+esc(e.message||e.code)));
+  }
+}
+function animateDiff(){/* hits are shown via render; kept simple */}
+
+function afterState(){
+  if(!game||!game.s)return render();
+  const s=game.s;
+  if(s.winner!=null&&!game.over){game.over=true;finishGame()}
+  if(tab==="battle")renderGame();
+}
+function finishGame(){
+  const s=game.s,won=s.winner===game.me,st=profile.stats,me=s.p[game.me];
+  if(game.mode==="pvp"){
+    if(profile.credited.includes(game.matchId))return;
+    profile.credited=[...profile.credited.slice(-40),game.matchId];
+  }
+  st.played++;st.bigHit=Math.max(st.bigHit,me.bigHit||0);
+  if(won&&me.hp>=20)st.flawless++;
+  if(game.mode==="bot"){if(won){st.botWins++;addCredz(REWARD.botWin,"Beat the droid")}else{st.botLosses++;addCredz(REWARD.botLoss,"Training match")}}
+  else{if(won){st.wins++;addCredz(REWARD.pvpWin,"Duel won")}else{st.losses++;addCredz(REWARD.pvpLoss,"Duel played")}pushPublic()}
+  commit();
+}
+
+/* ---------- GAME RENDER ---------- */
+function unitHTML(u,cls){const c=CARD[u.c];const kws=[u.guard&&"GUARD",u.miss&&"MISS"].filter(Boolean).join(" ");
+  return `<div class="unit ${cls} ${u.guard?"guard":""} ${u.shield?"shield":""}" data-u="${u.u}" title="${esc(c.n+": "+c.x)}" tabindex="0">${kws?`<span class="kw">${kws}</span>`:""}<div class="e" aria-hidden="true">${c.e}</div><div class="nm">${esc(c.n)}</div><div class="st"><span class="a">${u.atk}</span><span class="h">${u.hp}</span></div></div>`}
+function heroHTML(p,label,sub,isOpp,targetable){
+  return `<div class="hero ${targetable?"target":""}" ${isOpp?'data-hero="1" tabindex="0"':""}><div class="hp">♥${Math.max(0,p.hp)}</div><div class="who">${label}<small>${sub}</small></div>
+   <div class="stack" style="gap:4px;align-items:flex-end"><div class="energy" aria-label="${p.e} of ${p.maxE} energy">${Array.from({length:p.maxE},(_,k)=>`<i class="${k<p.e?"on":""}"></i>`).join("")}</div>
+   ${isOpp?`<div class="oppHand" aria-label="${p.hand.length} cards in hand">${p.hand.map(()=>"<i></i>").join("")}</div>`:""}</div></div>`}
+function renderGame(){
+  const m=$("#main");
+  if(!game.s){m.innerHTML=`<div class="panel stack"><h2>Waiting for a challenger</h2><div class="muted">The duel starts as soon as someone accepts it.</div><div class="row"><button class="btn" id="back">Back to lobby</button></div></div>`;$("#back").onclick=()=>{leaveMatch();game=null;render()};return}
+  const s=game.s,me=s.p[game.me],op=s.p[1-game.me];
+  const myTurn=s.turn===game.me&&s.winner==null;
+  const oppName=game.mode==="bot"?game.oppName:nm(game.oppId);
+  const sel=game.sel&&me.board.find(u=>u.u===game.sel);
+  const guards=hasGuard(op);
+  const stale=game.mode==="pvp"&&!myTurn&&s.winner==null&&game.m&&Date.now()-(game.m.updatedAt||0)>180000;
+  let res="";
+  if(s.winner!=null){const won=s.winner===game.me;
+    const pay=game.mode==="bot"?(won?REWARD.botWin:REWARD.botLoss):(won?REWARD.pvpWin:REWARD.pvpLoss);
+    res=`<div class="panel result ${won?"":"lose"}"><div class="big">${won?"VICTORY":"DEFEAT"}</div><p class="muted">${won?"The galaxy is (briefly) yours.":"You have failed me for the last time. Until the next time."} +${pay} credz.</p><div class="row" style="justify-content:center"><button class="btn gold" id="again">${game.mode==="bot"?"Fight the droid again":"Back to lobby"}</button>${game.mode==="bot"?'<button class="btn" id="back">Lobby</button>':""}</div></div>`}
+  const log=s.log.slice(-30).map(l=>`<div class="${l.w===game.me?"me":""}">${l.w===game.me?"You":esc(oppName)}: ${esc(l.m)}</div>`).join("");
+  m.innerHTML=`<div class="game"><div class="stack">
+    ${res}
+    <div class="table">
+      ${heroHTML(op,esc(oppName),`deck ${op.deck.length} · hand ${op.hand.length}`,true,!!sel&&!guards)}
+      <div class="board" id="oppBoard">${op.board.map(u=>unitHTML(u,sel&&(!guards||u.guard)?"target":"")).join("")||'<span class="hint">No enemy units</span>'}</div>
+      <div class="mid"><span class="turnbanner ${myTurn?"":"them"}">${s.winner!=null?"Game over":myTurn?(sel?"Pick a target":"Your turn"):oppName+"'s turn"}</span>
+        <div class="row">${sel?'<button class="btn small" id="cancelSel">Cancel</button>':""}<button class="btn ${myTurn?"gold":""}" id="endTurn" ${myTurn?"":"disabled"}>End turn</button></div></div>
+      <div class="board" id="myBoard">${me.board.map(u=>unitHTML(u,(game.sel===u.u?"sel ":"")+(myTurn&&u.ready&&u.atk>0?"ready":""))).join("")||'<span class="hint">Your units appear here</span>'}</div>
+      ${heroHTML(me,"You",`deck ${me.deck.length} · turn ${Math.ceil(s.turnNo/2)}`,false,false)}
+      <div class="hand" id="hand">${me.hand.map(h=>{const c=CARD[h.c];const ok=myTurn&&c.c<=me.e&&(c.t==="spell"||me.board.length<MAX_BOARD);return cardHTML(c,`data-h="${h.u}" class="card ${c.r} ${c.f} ${ok?"play":"cant"}" tabindex="0"`).replace(/^<div class="card [^"]*" /,"<div ")}).join("")}</div>
+    </div>
+   </div>
+   <div class="stack">
+     <div class="panel"><h3>Battle log</h3><div class="log">${log}</div></div>
+     <div class="row">${s.winner==null?'<button class="btn danger small" id="concede">Concede</button>':""}<button class="btn small" id="toLobby">Lobby</button>${stale?'<button class="btn small gold" id="claim">Opponent idle: claim win</button>':""}</div>
+     ${game.confirm?`<div class="panel stack"><b>Concede this match?</b><div class="row"><button class="btn danger small" id="yesC">Concede</button><button class="btn small" id="noC">Keep playing</button></div></div>`:""}
+   </div></div>`;
+  // handlers
+  $("#hand").querySelectorAll("[data-h]").forEach(el=>el.onclick=()=>{if(!myTurn)return;doAction({k:"play",u:+el.dataset.h})});
+  $("#myBoard").querySelectorAll("[data-u]").forEach(el=>el.onclick=()=>{if(!myTurn)return;const u=me.board.find(x=>x.u===+el.dataset.u);if(!u||!u.ready||u.atk<=0)return;game.sel=game.sel===u.u?null:u.u;renderGame()});
+  $("#oppBoard").querySelectorAll("[data-u]").forEach(el=>el.onclick=()=>{if(game.sel)doAction({k:"atk",u:game.sel,t:+el.dataset.u})});
+  m.querySelector("[data-hero]")?.addEventListener("click",()=>{if(game.sel)doAction({k:"atk",u:game.sel,t:"hero"})});
+  $("#endTurn").onclick=()=>doAction({k:"end"});
+  $("#cancelSel")?.addEventListener("click",()=>{game.sel=null;renderGame()});
+  $("#concede")?.addEventListener("click",()=>{game.confirm=true;renderGame()});
+  $("#yesC")?.addEventListener("click",()=>{game.confirm=false;doAction({k:"concede"})});
+  $("#noC")?.addEventListener("click",()=>{game.confirm=false;renderGame()});
+  $("#toLobby").onclick=()=>{leaveMatch();game=null;render()};
+  $("#again")?.addEventListener("click",()=>{if(game.mode==="bot")startBot();else{leaveMatch();game=null;render()}});
+  $("#back")?.addEventListener("click",()=>{leaveMatch();game=null;render()});
+  $("#claim")?.addEventListener("click",()=>{const opp=1-game.me;const r=act(game.s,opp,{k:"concede"});if(r.s){game.s=r.s;game.s.log[game.s.log.length-1].m="Went idle. Victory claimed.";const s=game.s;game.ref.update({state:s,seq:s.seq,status:"done",winner:P.uid,updatedAt:Date.now()}).catch(()=>{});afterState()}});
+}
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.matches?.("[data-h],[data-u],[data-hero]"))e.target.click();if(e.key==="Escape"&&game?.sel){game.sel=null;renderGame()}});
+
+/* ============================== BOOT ============================== */
+async function boot(){
+  render();
+  const use=n=>{try{return window.claude?.use?window.claude.use(n).catch(()=>null):Promise.resolve(null)}catch{return Promise.resolve(null)}};
+  const [db,user,room]=await Promise.all([use("db"),use("user"),use("room")]);
+  P.db=db;P.user=user;P.room=room;
+  if(user){try{P.uid=await user.id()}catch{}try{const w=await user.can("data.write");if(w===false)P.canWrite=false}catch{}}
+  if(!P.uid)P.db=null;
+  await loadProfile();
+  if(P.db){
+    P.db.collection("matches").where("status","==","open").limit(30).onSnapshot(q=>{openMatches=q.docs.map(d=>({id:d.id,...d.data()}));if(tab==="battle"&&!game)renderLobby()},()=>{});
+    const seenStatus={};
+    P.db.collection("matches").where("players","array-contains",P.uid).onSnapshot(q=>{
+      for(const d of q.docs){const mm=d.data();if(seenStatus[d.id]==="open"&&mm.status==="active"&&mm.host===P.uid&&!game){toast("Your duel was accepted. Battle stations!");enterMatch(d.id)}seenStatus[d.id]=mm.status}
+      myMatches=q.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+      // finished matches I haven't been credited for (e.g. opponent won while I was away)
+      for(const mm of myMatches){if(mm.status==="done"&&mm.state&&!profile.credited.includes(mm.id)&&!(game&&game.matchId===mm.id)){const g={mode:"pvp",matchId:mm.id,s:mm.state,me:mm.players.indexOf(P.uid)};const keep=game;game=g;finishGame();game=keep}}
+      if(tab==="battle"&&!game)renderLobby()},()=>{});
+    P.db.collection("players").orderBy("wins","desc").limit(25).onSnapshot(q=>{ranks=q.docs.map(d=>({id:d.id,...d.data()})).filter(r=>r.wins>0);if(tab==="ranks")renderRanks()},()=>{});
+  }
+  if(room){try{room.presence({at:"lobby"});room.onPeers(ch=>{const ids=new Set(ch.peers.filter(p=>p.kind==="viewer").map(p=>p.by||p.peer));P.online=ids.size;const el=$("#onlineCount");if(el)el.textContent=P.online+" online"})}catch{}}
+  checkAchs();save();
+  render();
+}
+boot();
+</script>
